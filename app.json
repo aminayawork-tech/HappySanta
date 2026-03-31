@@ -45,7 +45,6 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router",
       "expo-font",
       [
         "expo-splash-screen",
@@ -61,7 +60,6 @@
         {
           "icon": "./assets/images/notification-icon.png",
           "color": "#C41E3A",
-          "sounds": ["./assets/sounds/jingle.wav"],
           "androidMode": "default",
           "androidCollapsedTitle": "HappySanta 🎅"
         }
@@ -75,15 +73,9 @@
       "@react-native-google-signin/google-signin",
       "expo-secure-store"
     ],
-    "experiments": {
-      "typedRoutes": true
-    },
     "extra": {
       "eas": {
         "projectId": "YOUR_EAS_PROJECT_ID"
-      },
-      "router": {
-        "origin": false
       }
     }
   }
