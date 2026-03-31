@@ -1,0 +1,136 @@
+rules_version = '2';
+// ─────────────────────────────────────────────────────────────
+// HappySanta — Firestore Security Rules
+// ─────────────────────────────────────────────────────────────
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ──────────────────────────────────────────────
+
+    // Is the request coming from a signed-in user?
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Is the requesting user the owner of the document?
+    function isOwner(userId) {
+      return isAuth() && request.auth.uid == userId;
+    }
+
+    // Validate required string field
+    function hasString(field) {
+      return field in request.resource.data
+        && request.resource.data[field] is string
+        && request.resource.data[field].size() > 0;
+    }
+
+    // Validate required number field
+    function hasNumber(field) {
+      return field in request.resource.data
+        && request.resource.data[field] is number;
+    }
+
+    // ── Users ──────────────────────────────────────────────
+    // Users can only read/write their own profile document.
+
+    match /users/{userId} {
+      allow read:   if isOwner(userId);
+      allow create: if isOwner(userId)
+                    && hasString('email');
+      allow update: if isOwner(userId);
+      allow delete: if false; // Soft-delete only via Cloud Function
+    }
+
+    // ── Recipients ─────────────────────────────────────────
+    // A user can only manage their own recipients.
+
+    match /recipients/{recipientId} {
+      allow read:   if isAuth()
+                    && resource.data.userId == request.auth.uid;
+      allow create: if isAuth()
+                    && request.resource.data.userId == request.auth.uid
+                    && hasString('name')
+                    && hasNumber('age')
+                    && request.resource.data.age >= 0
+                    && request.resource.data.age <= 120;
+      allow update: if isAuth()
+                    && resource.data.userId == request.auth.uid
+                    && request.resource.data.userId == request.auth.uid;
+      allow delete: if isAuth()
+                    && resource.data.userId == request.auth.uid;
+    }
+
+    // ── Gift Lists ─────────────────────────────────────────
+    // A user can only manage their own lists.
+    // Public share tokens allow read-only access (future feature).
+
+    match /lists/{listId} {
+      allow read:   if isAuth()
+                    && resource.data.userId == request.auth.uid;
+      allow create: if isAuth()
+                    && request.resource.data.userId == request.auth.uid
+                    && hasString('title')
+                    && hasNumber('budget')
+                    && request.resource.data.budget > 0;
+      allow update: if isAuth()
+                    && resource.data.userId == request.auth.uid
+                    && request.resource.data.userId == request.auth.uid;
+      allow delete: if isAuth()
+                    && resource.data.userId == request.auth.uid;
+
+      // ── Gift Items (subcollection) ─────────────────────
+      match /items/{itemId} {
+        // User can access items if they own the parent list
+        allow read:   if isAuth()
+                      && get(/databases/$(database)/documents/lists/$(listId)).data.userId
+                         == request.auth.uid;
+        allow create: if isAuth()
+                      && get(/databases/$(database)/documents/lists/$(listId)).data.userId
+                         == request.auth.uid
+                      && hasString('title');
+        allow update: if isAuth()
+                      && get(/databases/$(database)/documents/lists/$(listId)).data.userId
+                         == request.auth.uid;
+        allow delete: if isAuth()
+                      && get(/databases/$(database)/documents/lists/$(listId)).data.userId
+                         == request.auth.uid;
+      }
+    }
+
+    // ── Price Alerts ────────────────────────────────────────
+    // Users manage their own alerts; Cloud Functions can write via Admin SDK
+    // (Admin SDK bypasses these rules, so no special rule needed for functions).
+
+    match /priceAlerts/{alertId} {
+      allow read:   if isAuth()
+                    && resource.data.userId == request.auth.uid;
+      allow create: if isAuth()
+                    && request.resource.data.userId == request.auth.uid
+                    && hasString('asin');
+      allow update: if isAuth()
+                    && resource.data.userId == request.auth.uid;
+      allow delete: if isAuth()
+                    && resource.data.userId == request.auth.uid;
+    }
+
+    // ── Notifications ───────────────────────────────────────
+    // Cloud Functions create notifications; users can only read/mark-read.
+
+    match /notifications/{notifId} {
+      allow read:   if isAuth()
+                    && resource.data.userId == request.auth.uid;
+      allow update: if isAuth()
+                    && resource.data.userId == request.auth.uid
+                    // Only allow flipping isRead — no other fields
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['isRead']);
+      allow create: if false; // Cloud Functions only
+      allow delete: if false; // Cloud Functions only
+    }
+
+    // ── Catch-all: deny everything else ────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
