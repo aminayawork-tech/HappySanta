@@ -1,6 +1,7 @@
 // ─────────────────────────────────────────────────────────────
 // HappySanta 🎅 — Root Application Component
 // ─────────────────────────────────────────────────────────────
+import './global.css'; // NativeWind v4 — must be first import
 import React, { useEffect, useCallback } from 'react';
 import { StatusBar, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';

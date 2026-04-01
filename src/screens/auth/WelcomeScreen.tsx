@@ -17,7 +17,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
 import { SnowAnimation }    from '@/components/common/SnowAnimation';
-import { COLORS, FONTS, APP_NAME, APP_TAGLINE, daysUntilChristmas } from '@/utils/constants';
+import { COLORS, FONTS, APP_NAME, APP_TAGLINE } from '@/utils/constants';
 import { daysUntilChristmas as calcDays } from '@/utils/helpers';
 
 const { width, height } = Dimensions.get('window');
